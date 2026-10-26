@@ -1,0 +1,73 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Calm Fidgets</title><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#1e2a38"><link rel="icon" href="icon.svg">
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
+body{margin:0;font-family:system-ui,sans-serif;background:#1e2a38;color:#eef;height:100vh;overflow:hidden;touch-action:none}
+header{display:flex;gap:8px;align-items:center;padding:8px;background:#162130}
+header h1{flex:1;font-size:20px;margin:0}
+button{font-size:18px;border:0;border-radius:14px;padding:12px 16px;background:#33475e;color:#eef;min-height:48px}
+#home{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;padding:14px}
+#home button{font-size:22px;min-height:120px;background:#2b4d5c}
+.v{display:none;height:calc(100vh - 64px);position:relative}
+.v.on{display:flex;flex-direction:column;align-items:center;justify-content:center}
+#bub{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;width:min(92vw,460px)}
+.b{aspect-ratio:1;border-radius:50%;background:radial-gradient(circle at 35% 30%,#bfe7e3,#7fc8c2);box-shadow:inset -4px -6px 10px #0003}
+.b.p{background:#24414b;box-shadow:inset 4px 6px 10px #0006}
+#spin{width:min(80vw,340px);height:min(80vw,340px)}
+#sw{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.t{width:90px;height:50px;border-radius:25px;background:#4a5a6a;position:relative}
+.t::after{content:"";position:absolute;width:42px;height:42px;top:4px;left:4px;border-radius:50%;background:#eef;transition:left .15s}
+.t.on{background:#7fc8c2}.t.on::after{left:44px}
+input[type=range]{width:80vw;max-width:420px;height:48px}
+#circ{width:120px;height:120px;border-radius:50%;background:#7fc8c2;transition:transform 4s ease-in-out}
+#bt{font-size:32px;margin-top:60px}
+canvas#sand{width:100%;height:100%}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style></head><body>
+<header><button id="back" hidden aria-label="Home">⌂ Home</button><h1 id="ttl">Calm Fidgets</h1>
+<button id="snd" aria-pressed="false">🔇 Sound</button><button id="hap" aria-pressed="true">📳 Buzz on</button></header>
+<main>
+<div id="home"><button data-v="v1">🫧 Bubble Pop</button><button data-v="v2">🌀 Spinner</button><button data-v="v3">🔘 Switches</button><button data-v="v4">🌬️ Breathe</button><button data-v="v5">🏖️ Sand Draw</button></div>
+<section class="v" id="v1"><div id="bub"></div><button id="rb" style="margin-top:20px">Reset</button></section>
+<section class="v" id="v2"><canvas id="spin" width="680" height="680" aria-label="Spinner, swipe to spin"></canvas><p>Swipe to spin</p></section>
+<section class="v" id="v3"><div id="sw"></div><input type="range" id="rg" min="0" max="20" value="10" aria-label="Clicky slider"></section>
+<section class="v" id="v4"><div id="circ"></div><div id="bt" aria-live="polite">Breathe in</div></section>
+<section class="v" id="v5"><canvas id="sand"></canvas><button id="sc" style="position:absolute;bottom:12px">Smooth</button></section>
+</main>
+<script>
+const $=s=>document.querySelector(s),RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
+let sound=false,hap=true,ac;
+function buzz(ms){if(hap&&navigator.vibrate)try{navigator.vibrate(ms)}catch(e){}}
+function tone(f,d=.08){if(!sound)return;try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();const o=ac.createOscillator(),g=ac.createGain();o.frequency.value=f;g.gain.setValueAtTime(.08,ac.currentTime);g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+d);o.connect(g).connect(ac.destination);o.start();o.stop(ac.currentTime+d)}catch(e){}}
+$('#snd').onclick=e=>{sound=!sound;e.target.textContent=sound?'🔊 Sound':'🔇 Sound';e.target.setAttribute('aria-pressed',sound)};
+$('#hap').onclick=e=>{hap=!hap;e.target.textContent=hap?'📳 Buzz on':'📴 Buzz off';e.target.setAttribute('aria-pressed',hap)};
+let cur=null,breathT;
+function show(id){document.querySelectorAll('.v').forEach(v=>v.classList.remove('on'));$('#home').style.display=id?'none':'grid';$('#back').hidden=!id;cur=id;clearInterval(breathT);
+ if(id){$('#'+id).classList.add('on');$('#ttl').textContent=document.querySelector(`[data-v=${id}]`).textContent}else $('#ttl').textContent='Calm Fidgets';
+ if(id=='v4')breath();if(id=='v5')sandInit();}
+document.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>show(b.dataset.v));$('#back').onclick=()=>show(null);
+// bubbles
+function bubbles(){const g=$('#bub');g.innerHTML='';for(let i=0;i<30;i++){const b=document.createElement('div');b.className='b';b.onpointerdown=()=>{if(!b.classList.contains('p')){b.classList.add('p');buzz(25);tone(500+Math.random()*300)}};g.appendChild(b)}}
+bubbles();$('#rb').onclick=()=>{bubbles();buzz(60)};
+// spinner
+const sc=$('#spin'),cx=sc.getContext('2d');let ang=0,vel=0,last=null,lt=0,tick=0;
+function drawSpin(){cx.clearRect(0,0,680,680);cx.save();cx.translate(340,340);cx.rotate(ang);for(let i=0;i<3;i++){cx.rotate(2*Math.PI/3);cx.fillStyle=['#7fc8c2','#f2d28c','#b9a7e0'][i];cx.beginPath();cx.arc(0,-190,100,0,7);cx.fill();cx.fillRect(-35,-190,70,190)}cx.fillStyle='#eef';cx.beginPath();cx.arc(0,0,60,0,7);cx.fill();cx.restore()}
+function angOf(e){const r=sc.getBoundingClientRect();return Math.atan2(e.clientY-r.top-r.height/2,e.clientX-r.left-r.width/2)}
+sc.onpointerdown=e=>{sc.setPointerCapture(e.pointerId);last=angOf(e);lt=performance.now();vel=0};
+sc.onpointermove=e=>{if(last==null)return;const a=angOf(e),now=performance.now();let d=a-last;if(d>Math.PI)d-=2*Math.PI;if(d<-Math.PI)d+=2*Math.PI;ang+=d;vel=d/Math.max(1,now-lt)*16;last=a;lt=now};
+sc.onpointerup=sc.onpointercancel=()=>{last=null;if(RM)vel*=.3};
+(function loop(){if(last==null){ang+=vel;vel*=.985;if(Math.abs(vel)<.001)vel=0}const t=Math.floor(ang/(2*Math.PI/3));if(t!=tick&&cur=='v2'){tick=t;buzz(8);tone(300,.03)}drawSpin();requestAnimationFrame(loop)})();
+// switches
+for(let i=0;i<9;i++){const t=document.createElement('button');t.className='t';t.setAttribute('aria-label','Switch '+(i+1));t.onclick=()=>{t.classList.toggle('on');buzz(30);tone(t.classList.contains('on')?660:440)};$('#sw').appendChild(t)}
+$('#rg').oninput=()=>{buzz(10);tone(300+$('#rg').value*30,.04)};
+// breathing
+function breath(){let inh=true;const c=$('#circ'),t=$('#bt');const step=()=>{t.textContent=inh?'Breathe in…':'Breathe out…';c.style.transform=inh?'scale(2.4)':'scale(1)';if(inh)buzz(40);inh=!inh};step();breathT=setInterval(step,4000)}
+// sand
+const sd=$('#sand'),sx=sd.getContext('2d');let drawing=false,lp=null;
+function sandInit(){const r=sd.getBoundingClientRect();sd.width=r.width;sd.height=r.height;sx.fillStyle='#d9c08f';sx.fillRect(0,0,sd.width,sd.height);for(let i=0;i<sd.width*sd.height/40;i++){sx.fillStyle=`rgba(120,90,50,${Math.random()*.15})`;sx.fillRect(Math.random()*sd.width,Math.random()*sd.height,2,2)}}
+sd.onpointerdown=e=>{drawing=true;sd.setPointerCapture(e.pointerId);lp=[e.offsetX,e.offsetY]};
+sd.onpointermove=e=>{if(!drawing)return;sx.strokeStyle='#b39565';sx.lineWidth=22;sx.lineCap='round';sx.beginPath();sx.moveTo(...lp);sx.lineTo(e.offsetX,e.offsetY);sx.stroke();lp=[e.offsetX,e.offsetY];if(Math.random()<.15)buzz(5)};
+sd.onpointerup=sd.onpointercancel=()=>drawing=false;
+$('#sc').onclick=()=>{sandInit();buzz(50)};
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script></body></html>
